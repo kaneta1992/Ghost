@@ -1,0 +1,3 @@
+[submodule "Ghost/imgui"]
+	path = Ghost/imgui
+	url = git@github.com:ocornut/imgui.git
