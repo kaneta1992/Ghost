@@ -187,6 +187,7 @@ int main(int, char**)
 					auto player = new PCMAudioPlayer();
 					player->SetAudio(*mp3);
 					player->Start();
+					SaveAudioToWaveFile(*mp3, "test.wav");
 				}
 			}
 			ImGui::SameLine();

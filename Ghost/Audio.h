@@ -17,8 +17,8 @@ public:
 	int GetBitDepth() const { return this->bitDepth; }
 	int GetSampleRate() const { return this->sampleRate; }
 	int GetSamples() const { return this->samples; }
-	DWORD GetIntSampleAt(int index) const {
-		return (DWORD)(buffer[index] * (float)((1 << bitDepth) / 2 - 1));
+	int GetIntSampleAt(int index) const {
+		return (int)(buffer[index] * (float)((1 << bitDepth) / 2 - 1));
 	}
 protected:
 	void Initialize(float* buffer, int channels, int bitDepth, int sampleRate, int samples) {
@@ -76,7 +76,7 @@ public:
 			wave = new BYTE[audio.GetSamples()];
 			break;
 		case 16:
-			wave = new WORD[audio.GetSamples()];
+			wave = new short[audio.GetSamples()];
 			break;
 		default:
 			throw std::runtime_error("Not support this bit depth");
@@ -91,7 +91,7 @@ public:
 				((BYTE*)wave)[i] = (BYTE)(audio.GetIntSampleAt(i));
 				break;
 			case 16:
-				((WORD*)wave)[i] = (WORD)(audio.GetIntSampleAt(i));
+				((short*)wave)[i] = (short)(audio.GetIntSampleAt(i));
 				break;
 
 			default:
