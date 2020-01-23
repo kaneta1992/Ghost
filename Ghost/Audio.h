@@ -20,6 +20,9 @@ public:
 	int GetIntSampleAt(int index) const {
 		return (int)(buffer[index] * (float)((1 << bitDepth) / 2 - 1));
 	}
+	bool IsValid() {
+		return this->buffer != nullptr;
+	}
 protected:
 	void Initialize(float* buffer, int channels, int bitDepth, int sampleRate, int samples) {
 		this->buffer = buffer;
@@ -28,7 +31,7 @@ protected:
 		this->sampleRate = sampleRate;
 		this->samples = samples;
 	}
-	float* buffer;
+	float* buffer = nullptr;
 	int channels;
 	int bitDepth;
 	int sampleRate;
@@ -119,6 +122,14 @@ public:
 		waveOutUnprepareHeader(hWaveOut, &whdr, sizeof(WAVEHDR));
 		waveOutClose(hWaveOut);
 		delete wave;
+	}
+	int GetPosition() {
+		MMTIME mmt;
+		int ms;
+		mmt.wType = TIME_SAMPLES;
+		waveOutGetPosition(hWaveOut, &mmt, sizeof(MMTIME));
+		ms = mmt.u.ms;
+		return ms;
 	}
 private:
 	WAVEFORMATEX wfe;

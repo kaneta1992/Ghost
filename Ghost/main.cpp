@@ -65,6 +65,9 @@ std::string openReadFile() {
 	return filename;
 }
 
+auto mp3 = new MP3Audio();
+auto player = new PCMAudioPlayer();
+
 int main(int, char**)
 {
 	// Setup window
@@ -171,27 +174,33 @@ int main(int, char**)
 
 			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
 
-			ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-			ImGui::Checkbox("Another Window", &show_another_window);
 
-			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-			ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+			float values[90] = {};
+			if (mp3->IsValid()) {
+				
+				for (int i = 0; i < 90; i++) {
+					int offset = player->GetPosition();
+					int index = std::min(i + offset, mp3->GetSamples() - 1);
+					values[i] = (mp3->GetBuffer()[index * 2] + mp3->GetBuffer()[index * 2 + 1]) * 0.5f;
+				}
+			}
+			ImGui::PlotLines("Lines", values, IM_ARRAYSIZE(values), 90, "", -1.0f, 1.0f, ImVec2(0, 80));
+
 
 			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
 			{
 				counter++;
 				auto filename = openReadFile();
 				if (filename != "") {
-					auto mp3 = new MP3Audio();
+					
 					mp3->LoadFromFile(filename);
-					auto player = new PCMAudioPlayer();
 					player->SetAudio(*mp3);
 					player->Start();
-					SaveAudioToWaveFile(*mp3, "test.wav");
+					//SaveAudioToWaveFile(*mp3, "test.wav");
 				}
 			}
 			ImGui::SameLine();
-			ImGui::Text("counter = %d", counter);
+			ImGui::Text("samples = %d", player->GetPosition());
 
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::End();
