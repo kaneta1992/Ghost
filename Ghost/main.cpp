@@ -174,16 +174,20 @@ int main(int, char**)
 			static float f = 0.0f;
 			static int counter = 0;
 
-			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+			ImGui::Begin("Analizer");                          // Create a window called "Hello, world!" and append into it.
 
 
-			static float values[90] = {};
-			static fft::FftArray z(512);
-			static float freqValues[512];
+			const int plotWaveNum = 90;
+			const int plotFFTNum = 1024;
+			static float values[plotWaveNum] = {};
+			static fft::FftArray z(plotFFTNum);
+			static float freqValues[plotFFTNum];
 			if (mp3->IsValid()) {
-				int offset = player->GetPosition();
-				for (int i = 0; i < 90; i++) {
-					int index = std::min(i + offset, mp3->GetSamples() - 1);
+				int postion = player->GetPosition();
+				int lastIndex = mp3->GetSamples() / mp3->GetChannels() - 1;
+				for (int i = 0; i < plotWaveNum; i++) {
+					int off = std::min(postion, lastIndex - plotWaveNum);
+					int index = std::min(i + off, lastIndex);
 					switch (mp3->GetChannels())
 					{
 					case 1:
@@ -197,31 +201,33 @@ int main(int, char**)
 					}
 				}
 
-				for (int i = 0; i < z.size(); i++) {
-					int index = std::min(i + offset, mp3->GetSamples() - 1);
+				for (int i = 0; i < plotFFTNum; i++) {
+					int off = std::min(postion, lastIndex - plotFFTNum);
+					int index = std::min(i + off, lastIndex);
 					switch (mp3->GetChannels())
 					{
 					case 1:
 						z[i] = mp3->GetBuffer()[index];
 						break;
 					case 2:
-						z[i] = (mp3->GetBuffer()[index * 2] + mp3->GetBuffer()[index * 2 + 1]) * 0.5f;
+						z[i] = ((double)mp3->GetBuffer()[index * 2] + (double)mp3->GetBuffer()[index * 2 + 1]) * 0.5;
 						break;
 					default:
 						break;
 					}
-					z[i] *= 0.5 - 0.5 * cos(2.0 * 3.141592 * i / z.size());
+					// Hann Window
+					z[i] *= 0.5 - 0.5 * cos(2.0 * 3.14159265358979323846 * i / plotFFTNum);
 				}
 				z.fft();
 				int count = 0;
 				for (fft::FftArray::iterator it = z.begin(); it != z.end(); ++it) {
 					float re = (*it).real(), im = (*it).imag();
-					freqValues[count] = sqrt(re*re+im*im);
+					freqValues[count] = 10.0f * log10(sqrt(re*re+im*im)) + 5.0f;
 					count++;
 				}
 			}
-			ImGui::PlotLines("Lines", values, IM_ARRAYSIZE(values), 90, "", -1.0f, 1.0f, ImVec2(0, 80));
-			ImGui::PlotHistogram("Histogram", freqValues, IM_ARRAYSIZE(freqValues)/2, 0, NULL, 0.0f, 10.0f, ImVec2(0, 80));
+			ImGui::PlotLines("Wave", values, IM_ARRAYSIZE(values), 0, "", -1.0f, 1.0f, ImVec2(0, 160));
+			ImGui::PlotHistogram("Frequency", freqValues, IM_ARRAYSIZE(freqValues)/2, 0, "-5dB ~ 20dB", 0.0f, 25.0f, ImVec2(0, 160));
 
 
 			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)

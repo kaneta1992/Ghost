@@ -66,7 +66,7 @@ public:
 		int samples = 44100 * 10;
 		float *buf = new float[samples];
 		for (int i = 0; i < samples; i++) {
-			buf[i] = sinf(hz * (i / 44100.0f) * 3.141592f * 2.0f);
+			buf[i] = sinf(hz * (i / 44100.0) * 3.14159265358979323846 * 2.0);
 		}
 		Initialize(buf, 1, 16, 44100, samples);
 	}
@@ -81,6 +81,7 @@ public:
 	}
 	void SetAudio(PCMAudio const& audio) {
 		Close();
+		samples = audio.GetSamples();
 		wfe.wFormatTag = WAVE_FORMAT_PCM;
 		wfe.nChannels = audio.GetChannels();								// Channels
 		wfe.wBitsPerSample = audio.GetBitDepth();									// Bit Depth
@@ -123,7 +124,7 @@ public:
 		whdr.lpData = (LPSTR)wave;
 		whdr.dwBufferLength = audio.GetSamples() * (audio.GetBitDepth()/8);
 		whdr.dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
-		whdr.dwLoops = 1;
+		whdr.dwLoops = 100;
 
 		waveOutPrepareHeader(hWaveOut, &whdr, sizeof(WAVEHDR));
 	}
@@ -146,13 +147,14 @@ public:
 		mmt.wType = TIME_SAMPLES;
 		waveOutGetPosition(hWaveOut, &mmt, sizeof(MMTIME));
 		ms = mmt.u.ms;
-		return ms;
+		return ms % std::max(samples / std::max((int)wfe.nChannels, 1), 1);
 	}
 private:
 	WAVEFORMATEX wfe;
 	HWAVEOUT hWaveOut;
 	WAVEHDR whdr;
 	void* wave;
+	int samples;
 };
 
 void SaveAudioToWaveFile(PCMAudio const& audio, std::string filename) {
@@ -166,8 +168,10 @@ void SaveAudioToWaveFile(PCMAudio const& audio, std::string filename) {
 	buffer.resize(numChannels);
 
 	buffer[0].resize(numSamplesPerChannel);
-	buffer[1].resize(numSamplesPerChannel);
 
+	if (numChannels == 2) {
+		buffer[1].resize(numSamplesPerChannel);
+	}
 
 	for (int i = 0; i < numSamplesPerChannel; i++)
 	{
