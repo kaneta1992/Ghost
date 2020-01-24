@@ -9,6 +9,28 @@
 #include "minimp3_ex.h"
 #include "AudioFile.h"
 
+void CALLBACK waveOutProc(
+	HWAVEOUT hwo,
+	UINT uMsg,
+	DWORD dwInstance,
+	DWORD dwParam1,
+	DWORD dwParam2
+)
+{
+	switch (uMsg)
+	{
+	case WOM_OPEN:
+		printf("waveOutOpen\n");
+		break;
+	case WOM_CLOSE:
+		printf("waveOutClose\n");
+		break;
+	case WOM_DONE:
+		printf("End\n");
+		break;
+	}
+}
+
 class PCMAudio {
 public:
 	PCMAudio() {}
@@ -89,7 +111,7 @@ public:
 		wfe.nSamplesPerSec = audio.GetSampleRate();								// Sample Rate
 		wfe.nAvgBytesPerSec = wfe.nSamplesPerSec * wfe.nBlockAlign;	// Byte per One Second
 
-		waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfe, 0, 0, CALLBACK_NULL);
+		waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfe, (DWORD)waveOutProc, 0, CALLBACK_FUNCTION);
 
 		switch (wfe.wBitsPerSample)
 		{
@@ -124,7 +146,7 @@ public:
 		whdr.lpData = (LPSTR)wave;
 		whdr.dwBufferLength = audio.GetSamples() * (audio.GetBitDepth()/8);
 		whdr.dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
-		whdr.dwLoops = 100;
+		whdr.dwLoops = 1;
 
 		waveOutPrepareHeader(hWaveOut, &whdr, sizeof(WAVEHDR));
 	}
