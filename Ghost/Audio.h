@@ -56,6 +56,23 @@ public:
 private:
 };
 
+class SinAudio : public PCMAudio {
+public:
+	SinAudio() {}
+	~SinAudio() {
+		delete buffer;
+	}
+	void Create(float hz) {
+		int samples = 44100 * 10;
+		float *buf = new float[samples];
+		for (int i = 0; i < samples; i++) {
+			buf[i] = sinf(hz * (i / 44100.0f) * 3.141592f * 2.0f);
+		}
+		Initialize(buf, 1, 16, 44100, samples);
+	}
+private:
+};
+
 class PCMAudioPlayer {
 public:
 	PCMAudioPlayer() {}

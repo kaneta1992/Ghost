@@ -9,6 +9,7 @@
 #define NOMINMAX
 #include <stdio.h>
 #include "Audio.h"
+#include "fft.h"
 #include <string>
 
 #include <windows.h>
@@ -66,6 +67,7 @@ std::string openReadFile() {
 }
 
 auto mp3 = new MP3Audio();
+//auto mp3 = new SinAudio();
 auto player = new PCMAudioPlayer();
 
 int main(int, char**)
@@ -176,6 +178,8 @@ int main(int, char**)
 
 
 			static float values[90] = {};
+			static fft::FftArray z(512);
+			static float freqValues[512];
 			if (mp3->IsValid()) {
 				int offset = player->GetPosition();
 				for (int i = 0; i < 90; i++) {
@@ -192,8 +196,32 @@ int main(int, char**)
 						break;
 					}
 				}
+
+				for (int i = 0; i < z.size(); i++) {
+					int index = std::min(i + offset, mp3->GetSamples() - 1);
+					switch (mp3->GetChannels())
+					{
+					case 1:
+						z[i] = mp3->GetBuffer()[index];
+						break;
+					case 2:
+						z[i] = (mp3->GetBuffer()[index * 2] + mp3->GetBuffer()[index * 2 + 1]) * 0.5f;
+						break;
+					default:
+						break;
+					}
+					z[i] *= 0.5 - 0.5 * cos(2.0 * 3.141592 * i / z.size());
+				}
+				z.fft();
+				int count = 0;
+				for (fft::FftArray::iterator it = z.begin(); it != z.end(); ++it) {
+					float re = (*it).real(), im = (*it).imag();
+					freqValues[count] = sqrt(re*re+im*im);
+					count++;
+				}
 			}
 			ImGui::PlotLines("Lines", values, IM_ARRAYSIZE(values), 90, "", -1.0f, 1.0f, ImVec2(0, 80));
+			ImGui::PlotHistogram("Histogram", freqValues, IM_ARRAYSIZE(freqValues)/2, 0, NULL, 0.0f, 10.0f, ImVec2(0, 80));
 
 
 			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
@@ -202,6 +230,7 @@ int main(int, char**)
 				auto filename = openReadFile();
 				if (filename != "") {
 					
+					//mp3->Create(440.0f);
 					mp3->LoadFromFile(filename);
 					player->SetAudio(*mp3);
 					player->Start();
