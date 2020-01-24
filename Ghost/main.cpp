@@ -175,13 +175,22 @@ int main(int, char**)
 			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
 
 
-			float values[90] = {};
+			static float values[90] = {};
 			if (mp3->IsValid()) {
-				
+				int offset = player->GetPosition();
 				for (int i = 0; i < 90; i++) {
-					int offset = player->GetPosition();
 					int index = std::min(i + offset, mp3->GetSamples() - 1);
-					values[i] = (mp3->GetBuffer()[index * 2] + mp3->GetBuffer()[index * 2 + 1]) * 0.5f;
+					switch (mp3->GetChannels())
+					{
+					case 1:
+						values[i] = mp3->GetBuffer()[index];
+						break;
+					case 2:
+						values[i] = (mp3->GetBuffer()[index * 2] + mp3->GetBuffer()[index * 2 + 1]) * 0.5f;
+						break;
+					default:
+						break;
+					}
 				}
 			}
 			ImGui::PlotLines("Lines", values, IM_ARRAYSIZE(values), 90, "", -1.0f, 1.0f, ImVec2(0, 80));
