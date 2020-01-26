@@ -66,6 +66,40 @@ std::string openReadFile() {
 	return filename;
 }
 
+bool CheckShader(GLuint handle, const char* desc)
+{
+	GLint status = 0, log_length = 0;
+	glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
+	glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &log_length);
+	if ((GLboolean)status == GL_FALSE)
+		fprintf(stderr, "ERROR: ImGui_ImplOpenGL3_CreateDeviceObjects: failed to compile %s!\n", desc);
+	if (log_length > 1)
+	{
+		ImVector<char> buf;
+		buf.resize((int)(log_length + 1));
+		glGetShaderInfoLog(handle, log_length, NULL, (GLchar*)buf.begin());
+		fprintf(stderr, "%s\n", buf.begin());
+	}
+	return (GLboolean)status == GL_TRUE;
+}
+
+bool CheckProgram(GLuint handle, const char* desc)
+{
+	GLint status = 0, log_length = 0;
+	glGetProgramiv(handle, GL_LINK_STATUS, &status);
+	glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &log_length);
+	if ((GLboolean)status == GL_FALSE)
+		fprintf(stderr, "ERROR: ImGui_ImplOpenGL3_CreateDeviceObjects: failed to link %s! (with GLSL '%s')\n", desc, "g_GlslVersionString");
+	if (log_length > 1)
+	{
+		ImVector<char> buf;
+		buf.resize((int)(log_length + 1));
+		glGetProgramInfoLog(handle, log_length, NULL, (GLchar*)buf.begin());
+		fprintf(stderr, "%s\n", buf.begin());
+	}
+	return (GLboolean)status == GL_TRUE;
+}
+
 auto mp3 = new MP3Audio();
 //auto mp3 = new SinAudio();
 auto player = new PCMAudioPlayer();
@@ -149,6 +183,59 @@ int main(int, char**)
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
 	//ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != NULL);
+
+	const GLchar* vertex_shader =
+		"#version 410\n"
+		"layout (location = 0) in vec2 Position;\n"
+		"layout (location = 1) in vec2 UV;\n"
+		"layout (location = 2) in vec4 Color;\n"
+		"uniform mat4 ProjMtx;\n"
+		"out vec2 Frag_UV;\n"
+		"out vec4 Frag_Color;\n"
+		"void main()\n"
+		"{\n"
+		"    Frag_UV = UV;\n"
+		"    Frag_Color = Color;\n"
+		"    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+		"}\n";
+	const GLchar* fragment_shader =
+		"#version 410\n"
+		"in vec2 Frag_UV;\n"
+		"in vec4 Frag_Color;\n"
+		"uniform sampler2D Texture;\n"
+		"layout (location = 0) out vec4 Out_Color;\n"
+		"void main()\n"
+		"{\n"
+		"    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
+		"}\n";
+
+	GLuint       g_ShaderHandle = 0, g_VertHandle = 0, g_FragHandle = 0;
+	// Shader Compile Test
+	// Create shaders
+	const GLchar* vertex_shader_with_version[1] = { vertex_shader };
+	g_VertHandle = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(g_VertHandle, 1, vertex_shader_with_version, NULL);
+	glCompileShader(g_VertHandle);
+	CheckShader(g_VertHandle, "vertex shader");
+
+	const GLchar* fragment_shader_with_version[1] = { fragment_shader };
+	g_FragHandle = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(g_FragHandle, 1, fragment_shader_with_version, NULL);
+	glCompileShader(g_FragHandle);
+	CheckShader(g_FragHandle, "fragment shader");
+
+	g_ShaderHandle = glCreateProgram();
+	glAttachShader(g_ShaderHandle, g_VertHandle);
+	glAttachShader(g_ShaderHandle, g_FragHandle);
+	glLinkProgram(g_ShaderHandle);
+	CheckProgram(g_ShaderHandle, "shader program");
+
+	if (g_ShaderHandle && g_VertHandle) { glDetachShader(g_ShaderHandle, g_VertHandle); }
+	if (g_ShaderHandle && g_FragHandle) { glDetachShader(g_ShaderHandle, g_FragHandle); }
+	if (g_VertHandle) { glDeleteShader(g_VertHandle); g_VertHandle = 0; }
+	if (g_FragHandle) { glDeleteShader(g_FragHandle); g_FragHandle = 0; }
+	if (g_ShaderHandle) { glDeleteProgram(g_ShaderHandle); g_ShaderHandle = 0; }
+	/////////
 
 	// Our state
 	bool show_another_window = false;
