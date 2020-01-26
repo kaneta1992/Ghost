@@ -229,8 +229,12 @@ int main(int, char**)
 			ImGui::PlotLines("Wave", values, IM_ARRAYSIZE(values), 0, "", -1.0f, 1.0f, ImVec2(0, 160));
 			ImGui::PlotHistogram("Frequency", freqValues, IM_ARRAYSIZE(freqValues)/2, 0, "-5dB ~ 20dB", 0.0f, 25.0f, ImVec2(0, 160));
 
+			static bool loop = false;
+			ImGui::Checkbox("Loop", &loop);
+			player->SetLoop(loop);
 
-			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+			ImGui::SameLine();
+			if (ImGui::Button("Load"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
 			{
 				counter++;
 				auto filename = openReadFile();
@@ -243,6 +247,22 @@ int main(int, char**)
 					//SaveAudioToWaveFile(*mp3, "test.wav");
 				}
 			}
+
+
+			ImGui::SameLine();
+			if (ImGui::Button("Start")) {
+				player->Start();
+				player->Restart();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Pause")) {
+				player->Pause();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Stop")) {
+				player->Stop();
+			}
+
 			ImGui::SameLine();
 			ImGui::Text("samples = %d", player->GetPosition());
 

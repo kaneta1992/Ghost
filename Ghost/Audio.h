@@ -5,31 +5,12 @@
 #define MINIMP3_FLOAT_OUTPUT
 
 #include <string>
+#include <map>
 #include <exception>
 #include "minimp3_ex.h"
 #include "AudioFile.h"
 
-void CALLBACK waveOutProc(
-	HWAVEOUT hwo,
-	UINT uMsg,
-	DWORD dwInstance,
-	DWORD dwParam1,
-	DWORD dwParam2
-)
-{
-	switch (uMsg)
-	{
-	case WOM_OPEN:
-		printf("waveOutOpen\n");
-		break;
-	case WOM_CLOSE:
-		printf("waveOutClose\n");
-		break;
-	case WOM_DONE:
-		printf("End\n");
-		break;
-	}
-}
+
 
 class PCMAudio {
 public:
@@ -101,6 +82,7 @@ public:
 	~PCMAudioPlayer() {
 		Close();
 	}
+
 	void SetAudio(PCMAudio const& audio) {
 		Close();
 		samples = audio.GetSamples();
@@ -112,6 +94,7 @@ public:
 		wfe.nAvgBytesPerSec = wfe.nSamplesPerSec * wfe.nBlockAlign;	// Byte per One Second
 
 		waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfe, (DWORD)waveOutProc, 0, CALLBACK_FUNCTION);
+		playerMap[hWaveOut] = this;
 
 		switch (wfe.wBitsPerSample)
 		{
@@ -154,13 +137,22 @@ public:
 	void Start() {
 		waveOutWrite(hWaveOut, &whdr, sizeof(WAVEHDR));
 	}
+	void Pause() {
+		waveOutPause(hWaveOut);
+	}
+	void Restart() {
+		waveOutRestart(hWaveOut);
+	}
 	void Stop() {
+		isStopping = true;
 		waveOutReset(hWaveOut);
 	}
 	void Close() {
-		waveOutReset(hWaveOut);
+		Stop();
 		waveOutUnprepareHeader(hWaveOut, &whdr, sizeof(WAVEHDR));
 		waveOutClose(hWaveOut);
+		playerMap[hWaveOut] = nullptr;
+		isStopping = false;
 		delete wave;
 	}
 	int GetPosition() {
@@ -171,13 +163,56 @@ public:
 		ms = mmt.u.ms;
 		return ms % std::max(samples / std::max((int)wfe.nChannels, 1), 1);
 	}
+	void SetLoop(bool loop) {
+		isLoop = loop;
+	}
 private:
 	WAVEFORMATEX wfe;
 	HWAVEOUT hWaveOut;
 	WAVEHDR whdr;
 	void* wave;
 	int samples;
+	bool isLoop;
+	bool isStopping;
+
+	static std::map<HWAVEOUT, PCMAudioPlayer*> playerMap;
+
+	static 	void CALLBACK waveOutProc(
+		HWAVEOUT hwo,
+		UINT uMsg,
+		DWORD dwInstance,
+		DWORD dwParam1,
+		DWORD dwParam2
+	)
+	{
+		switch (uMsg)
+		{
+		case WOM_OPEN:
+			printf("waveOutOpen\n");
+			break;
+		case WOM_CLOSE:
+			printf("waveOutClose\n");
+			break;
+		case WOM_DONE:
+			printf("End\n");
+			
+			// FIXME:
+			// どうやらコールバック中にAPIを利用するとフリーズすることがあるらしい（実際にする）
+			// ループ機能を消すか、キュー方式に変更する必要がある
+			auto player = playerMap[hwo];
+			if (player->isStopping) {
+				player->isStopping = false;
+			}
+			else {
+				if (player->isLoop) {
+					player->Start();
+				}
+			}
+			break;
+		}
+	}
 };
+std::map<HWAVEOUT, PCMAudioPlayer*> PCMAudioPlayer::playerMap;
 
 void SaveAudioToWaveFile(PCMAudio const& audio, std::string filename) {
 	AudioFile<double> audioFile;
