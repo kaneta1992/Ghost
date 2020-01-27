@@ -265,7 +265,7 @@ int main(int, char**)
 
 
 			const int plotWaveNum = 90;
-			const int plotFFTNum = 1024;
+			const int plotFFTNum = 512;
 			static float values[plotWaveNum] = {};
 			static fft::FftArray z(plotFFTNum);
 			static float freqValues[plotFFTNum];
@@ -309,12 +309,12 @@ int main(int, char**)
 				int count = 0;
 				for (fft::FftArray::iterator it = z.begin(); it != z.end(); ++it) {
 					float re = (*it).real(), im = (*it).imag();
-					freqValues[count] = 10.0f * log10(sqrt(re*re+im*im)) + 5.0f;
+					freqValues[count] = 10.0f * log10(re*re+im*im) + 20.0f;
 					count++;
 				}
 			}
 			ImGui::PlotLines("Wave", values, IM_ARRAYSIZE(values), 0, "", -1.0f, 1.0f, ImVec2(0, 160));
-			ImGui::PlotHistogram("Frequency", freqValues, IM_ARRAYSIZE(freqValues)/2, 0, "-5dB ~ 20dB", 0.0f, 25.0f, ImVec2(0, 160));
+			ImGui::PlotHistogram("Frequency", freqValues, IM_ARRAYSIZE(freqValues)/2, 0, "-20dB ~ 50dB", 0.0f, 70.0f, ImVec2(0, 160));
 
 			static bool loop = false;
 			ImGui::Checkbox("Loop", &loop);
