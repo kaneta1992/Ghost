@@ -102,6 +102,7 @@ bool CheckProgram(GLuint handle, const char* desc)
 
 auto mp3 = new MP3Audio();
 //auto mp3 = new SinAudio();
+//auto mp3 = new NokogiriAudio();
 auto player = new PCMAudioPlayer();
 
 int main(int, char**)
@@ -264,7 +265,7 @@ int main(int, char**)
 			ImGui::Begin("Analizer");                          // Create a window called "Hello, world!" and append into it.
 
 
-			const int plotWaveNum = 90;
+			const int plotWaveNum = 256;
 			const int plotFFTNum = 512;
 			static float values[plotWaveNum] = {};
 			static fft::FftArray z(plotFFTNum);
@@ -304,17 +305,31 @@ int main(int, char**)
 					}
 					// Hann Window
 					z[i] *= 0.5 - 0.5 * cos(2.0 * 3.14159265358979323846 * i / plotFFTNum);
+					// ハン窓で面積が1/2になったので二倍する
+					z[i] *= 2.0;
 				}
 				z.fft();
 				int count = 0;
 				for (fft::FftArray::iterator it = z.begin(); it != z.end(); ++it) {
 					float re = (*it).real(), im = (*it).imag();
-					freqValues[count] = 10.0f * log10(re*re+im*im) + 20.0f;
+					//freqValues[count] = 10.0f * log10(re*re+im*im) + 20.0f;
+
+					// パワースペクトル（片側スペクトルなので二倍する）
+					//freqValues[count] = 2.0 * ((re * re + im * im) / (double)(plotFFTNum * plotFFTNum));
+					//freqValues[count] = 10.0 * log10(2.0 * ((re * re + im * im) / (double)(plotFFTNum * plotFFTNum)));  // デシベル
+
+					// 振幅（片側スペクトルなので二倍する）
+					//freqValues[count] = 2.0 * (sqrt(re * re + im * im) / (double)(plotFFTNum));
+					freqValues[count] = 20.0 * log10(2.0 * (sqrt(re * re + im * im) / (double)(plotFFTNum)));			// デシベル
+
+
+					//freqValues[count] = sqrt(re * re + im * im) / (double)plotFFTNum;
 					count++;
 				}
 			}
 			ImGui::PlotLines("Wave", values, IM_ARRAYSIZE(values), 0, "", -1.0f, 1.0f, ImVec2(0, 160));
-			ImGui::PlotHistogram("Frequency", freqValues, IM_ARRAYSIZE(freqValues)/2, 0, "-20dB ~ 50dB", 0.0f, 70.0f, ImVec2(0, 160));
+			ImGui::PlotHistogram("Frequency", freqValues, IM_ARRAYSIZE(freqValues)/2, 0, "-52dB ~ 1dB", -52.0f, 1.0f, ImVec2(0, 160));
+			//ImGui::PlotHistogram("Frequency", freqValues, IM_ARRAYSIZE(freqValues) / 2, 0, "-60dB ~ 1dB", 0.0, 1.0f, ImVec2(0, 160));
 
 			static bool loop = false;
 			ImGui::Checkbox("Loop", &loop);
@@ -327,7 +342,7 @@ int main(int, char**)
 				auto filename = openReadFile();
 				if (filename != "") {
 					
-					//mp3->Create(440.0f);
+					//mp3->Create(220.0f);
 					mp3->LoadFromFile(filename);
 					player->SetAudio(*mp3);
 					player->Start();

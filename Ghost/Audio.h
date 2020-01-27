@@ -5,11 +5,13 @@
 #define MINIMP3_FLOAT_OUTPUT
 
 #include <string>
+#include <cmath>
 #include <map>
 #include <exception>
 #include "minimp3_ex.h"
 #include "AudioFile.h"
 
+#define A_PI 3.14159265358979323846
 
 
 class PCMAudio {
@@ -69,9 +71,31 @@ public:
 		int samples = 44100 * 10;
 		float *buf = new float[samples];
 		for (int i = 0; i < samples; i++) {
-			buf[i] = sinf(hz * (i / 44100.0) * 3.14159265358979323846 * 2.0);
+			buf[i] = sinf(hz * (i / 44100.0) * A_PI * 2.0);
 		}
 		Initialize(buf, 1, 16, 44100, samples);
+	}
+private:
+};
+
+class NokogiriAudio : public PCMAudio {
+public:
+	NokogiriAudio() {}
+	~NokogiriAudio() {
+		delete buffer;
+	}
+	void Create(float hz) {
+		double rate = 44100.0;
+		int samples = (int)(rate) * 1;
+		float* buf = new float[samples];
+		for (int i = 0; i < samples; i++) {
+			double t = i / rate;
+			buf[i] = fmod(t * hz, 1.0) * 2.0 - 1.0;
+			//buf[i] = sinf(440.0 * t * A_PI * 2.0);
+			//buf[i] = sin(2 * A_PI * 400 * t);
+			//buf[i] = sin(2 * A_PI * 400 * t) + 2 * sin(2 * A_PI * 800 * t) + 2 * sin(2 * A_PI * 1280 * t);
+		}
+		Initialize(buf, 1, 16, (int)rate, samples);
 	}
 private:
 };
