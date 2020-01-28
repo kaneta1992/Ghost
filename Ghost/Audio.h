@@ -7,6 +7,7 @@
 #include <string>
 #include <cmath>
 #include <map>
+#include <random>
 #include <exception>
 #include "minimp3_ex.h"
 #include "AudioFile.h"
@@ -98,6 +99,43 @@ public:
 		Initialize(buf, 1, 16, (int)rate, samples);
 	}
 private:
+};
+
+class NoiseAudio : public PCMAudio {
+public:
+	NoiseAudio() {}
+	~NoiseAudio() {
+		delete buffer;
+	}
+	void Create(float hz) {
+		double rate = 44100.0;
+		int samples = (int)(rate) * 10;
+
+		std::random_device rd;
+		std::mt19937 mt(rd());
+		std::uniform_real_distribution<double> score(-1.0, 1.0);
+
+		float* buf = new float[samples];
+		for (int i = 0; i < samples; i++) {
+			double t = i / rate;
+			buf[i] = hash11(floor(t * 440.0f));
+			//buf[i] = hardRain(t);
+			//buf[i] = sin(t * 10000.0f);
+		}
+		Initialize(buf, 1, 16, (int)rate, samples);
+	}
+private:
+	float hash11(float p)
+	{
+		p = fmodf(p * 0.1031f, 1.0f);
+		p *= p + 33.33;
+		p *= p + p;
+		return fmodf(p, 1.0f) * 2.0 - 1.0;
+	}
+	float hardRain(float t) {
+		float g = fmodf(sin(t * 10000.0) * 10000.0, 1.0f) + 6.0;
+		return exp(-0.08 * g * g) * 40.0 - 1.0;
+	}
 };
 
 class PCMAudioPlayer {
