@@ -190,14 +190,19 @@ int main(int, char**)
 		"layout (location = 0) in vec2 Position;\n"
 		"layout (location = 1) in vec2 UV;\n"
 		"layout (location = 2) in vec4 Color;\n"
-		"uniform mat4 ProjMtx;\n"
-		"out vec2 Frag_UV;\n"
-		"out vec4 Frag_Color;\n"
-		"void main()\n"
-		"{\n"
-		"    Frag_UV = UV;\n"
-		"    Frag_Color = Color;\n"
-		"    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+		"const vec2[4] POSITIONS = vec2[](\n"
+			"vec2(-1.0, -1.0), \n"
+			"vec2(1.0, -1.0), \n"
+			"vec2(-1.0, 1.0), \n"
+			"vec2(1.0, 1.0)\n"
+		"); \n"
+		"const int[6] INDICES = int[](\n"
+			"0, 1, 2, \n"
+			"3, 2, 1\n"
+		"); \n"
+		"void main(void) {\n"
+			"vec2 position = POSITIONS[INDICES[gl_VertexID]]; \n"
+			"gl_Position = vec4(position, 0.0, 1.0); \n"
 		"}\n";
 	const GLchar* fragment_shader =
 		"#version 410\n"
@@ -207,7 +212,7 @@ int main(int, char**)
 		"layout (location = 0) out vec4 Out_Color;\n"
 		"void main()\n"
 		"{\n"
-		"    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
+		"    Out_Color = vec4(1.0, .75, .5, .25);\n"
 		"}\n";
 
 	GLuint       g_ShaderHandle = 0, g_VertHandle = 0, g_FragHandle = 0;
@@ -230,12 +235,60 @@ int main(int, char**)
 	glAttachShader(g_ShaderHandle, g_FragHandle);
 	glLinkProgram(g_ShaderHandle);
 	CheckProgram(g_ShaderHandle, "shader program");
+	glUseProgram(g_ShaderHandle);
+
+	int width = 512;
+	int height = 512;
+	int duration = 5;
+
+	// create a texture object
+	GLuint textureId;
+	glGenTextures(1, &textureId);
+	glBindTexture(GL_TEXTURE_2D, textureId);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	//glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE); // automatic mipmap
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, width, height, 0, GL_RG, GL_FLOAT, 0);
+	//glBindTexture(GL_TEXTURE_2D, 0);
+
+	// create a framebuffer object
+	GLuint fboId;
+	glGenFramebuffers(1, &fboId);
+	glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+
+	// attach the texture to FBO color attachment point
+	glFramebufferTexture2D(GL_FRAMEBUFFER,        // 1. fbo target: GL_FRAMEBUFFER
+		GL_COLOR_ATTACHMENT0,  // 2. attachment point
+		GL_TEXTURE_2D,         // 3. tex target: GL_TEXTURE_2D
+		textureId,             // 4. tex ID
+		0);                    // 5. mipmap level: 0(base)
+
+	glViewport(0, 0, width, height);
+	GLuint vao([]() { GLuint vao; glGenVertexArrays(1, &vao); return vao; } ());
+	glBindVertexArray(vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	float *buffer = new float[width * height * duration * 2];
+
+	glGetTexImage(GL_TEXTURE_2D, 0, GL_RG, GL_FLOAT, buffer);
+
+	printf("%f\n", buffer[0]);
+	printf("%f\n", buffer[1]);
+	printf("%f\n", buffer[2]);
+	printf("%f\n", buffer[3]);
 
 	if (g_ShaderHandle && g_VertHandle) { glDetachShader(g_ShaderHandle, g_VertHandle); }
 	if (g_ShaderHandle && g_FragHandle) { glDetachShader(g_ShaderHandle, g_FragHandle); }
 	if (g_VertHandle) { glDeleteShader(g_VertHandle); g_VertHandle = 0; }
 	if (g_FragHandle) { glDeleteShader(g_FragHandle); g_FragHandle = 0; }
 	if (g_ShaderHandle) { glDeleteProgram(g_ShaderHandle); g_ShaderHandle = 0; }
+	if (textureId) { glDeleteTextures(1, &textureId); textureId = 0; }
+	if (fboId) { glDeleteFramebuffers(1, &fboId); fboId = 0; }
+	if (vao) { glDeleteVertexArrays(1, &vao); vao = 0; }
+	delete buffer;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	/////////
 
 	// Our state
