@@ -100,9 +100,10 @@ bool CheckProgram(GLuint handle, const char* desc)
 	return (GLboolean)status == GL_TRUE;
 }
 
-auto mp3 = new MP3Audio();
+//auto mp3 = new MP3Audio();
 //auto mp3 = new SinAudio();
 //auto mp3 = new NokogiriAudio();
+auto mp3 = new NoiseAudio();
 auto player = new PCMAudioPlayer();
 
 int main(int, char**)
@@ -395,8 +396,8 @@ int main(int, char**)
 				auto filename = openReadFile();
 				if (filename != "") {
 					
-					//mp3->Create(220.0f);
-					mp3->LoadFromFile(filename);
+					mp3->Create(2200.0f);
+					//mp3->LoadFromFile(filename);
 					player->SetAudio(*mp3);
 					player->Start();
 					//SaveAudioToWaveFile(*mp3, "test.wav");
